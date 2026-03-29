@@ -77,29 +77,90 @@
 export class DabbaService {
   constructor(serviceName, area) {
     // Your code here
+    this.serviceName = serviceName
+    this.area = area
+    this.customers = []
+    this._nextId = 1
   }
 
   addCustomer(name, address, mealPreference) {
     // Your code here
+    if (!["veg", "nonveg", "jain"].includes(mealPreference)) return null
+    if (this.customers.some((item) => item.name === name)) return null
+    const customer = { id: this._nextId++, name, address, mealPreference, active: true, delivered: false }
+    this.customers.push(customer)
+    return customer
+
   }
 
   removeCustomer(name) {
     // Your code here
+    const customer = this.customers.find((item) => item.name === name)
+    if (!customer || !customer.active) return false
+    customer.active = false
+    return true
   }
 
   createDeliveryBatch() {
     // Your code here
+    let deliveries = []
+    this.customers.forEach((item) => {
+      if (item.active) {
+        const delivery = { customerId: item.id, name: item.name, address: item.address, mealPreference: item.mealPreference, batchTime: new Date().toISOString() }
+        deliveries.push(delivery)
+      }
+    })
+
+    return deliveries
   }
 
   markDelivered(customerId) {
     // Your code here
+    const customer = this.customers.find((item) => item.id === customerId)
+    if (!customer || !customer.active) return false
+    customer.delivered = true
+    return true
   }
 
   getDailyReport() {
     // Your code here
+    let totalCustomers = 0;
+    let delivered = 0
+    let pending = 0
+    let mealBreakdown = { veg: 0, nonveg: 0, jain: 0 }
+
+    this.customers.map((item) => {
+      if (item.active) {
+        totalCustomers++
+
+        if (item.delivered) {
+          delivered++
+        } else {
+          pending++
+        }
+
+        mealBreakdown[item.mealPreference]++
+      }
+
+    })
+
+     return { totalCustomers, delivered, pending, mealBreakdown }
+
+    //     getDailyReport()
+    //  *     - Returns report object for ACTIVE customers only:
+    //  *       {
+    //  *         totalCustomers: number (active only),
+    //  *         delivered: number (active and delivered === true),
+    //  *         pending: number (active and delivered === false),
+    //  *         mealBreakdown: { veg: count, nonveg: count, jain: count }
+    //  *       }
+    //  *     - mealBreakdown counts active customers only
   }
 
   getCustomer(name) {
     // Your code here
+    const customer = this.customers.find((item) => item.name === name)
+    if (!customer) return null
+    return customer
   }
 }

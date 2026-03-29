@@ -100,24 +100,75 @@
  */
 export async function checkSeatAvailability(trainNumber, date, classType) {
   // Your code here
+  return new Promise((resolve, reject) => {
+    if (typeof trainNumber !== 'string' || trainNumber.length !== 5 || trainNumber.match(/[^0-9]/)) return reject(new Error("Invalid train number! 5 digit hona chahiye."))
+
+    if (!["SL", "3A", "2A", "1A"].includes(classType)) return reject(new Error("Invalid class type!"))
+
+    if (typeof date !== 'string' || date.length === 0) return reject(new Error("Date required hai!"))
+
+    setTimeout(() => {
+      resolve({
+        trainNumber, date, classType,
+        available: Math.random() > 0.7,
+        seats: Math.floor(Math.random() * 50),
+        waitlist: Math.floor(Math.random() * 20)
+      })
+    }, 100);
+  })
 }
 
+const fares = { "SL": 250, "3A": 800, "2A": 1200, "1A": 2000 }
 export async function bookTicket(passenger, trainNumber, date, classType) {
   // Your code here
+  if (trainNumber.length !== 5) return { pnr: null, status: "waitlisted", waitlistNumber: availability.waitlist }
+
+  return {
+    pnr: "PNR" + Math.floor(Math.random() * 1000000),
+    passenger, trainNumber, date,
+    class: classType,
+    status: "confirmed",
+    fare: fares[classType]
+  }
 }
 
 export async function cancelTicket(pnr) {
   // Your code here
+  if (typeof pnr !== "string" || !pnr.startsWith("PNR")) throw new Error("Invalid PNR number!");
+
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  return { pnr, status: "cancelled", refund: Math.floor(Math.random() * 1000) + 100 }
 }
 
 export async function getBookingStatus(pnr) {
   // Your code here
+  if (typeof pnr !== "string" || !pnr.startsWith("PNR")) throw new Error("Invalid PNR number!");
+
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  return { pnr, status: Math.random() > 0.5 ? "confirmed" : "waitlisted", lastUpdated: new Date().toISOString() }
 }
 
 export async function bookMultipleTickets(passengers, trainNumber, date, classType) {
   // Your code here
+  if (!Array.isArray(passengers)) return []
+
+  return Promise.allSettled(passengers.map((passenger) => bookTicket(passenger, trainNumber, date, classType))).then((results) => {
+    return results.map((result) => {
+      if (result.status === "rejected") return { passenger: result.reason, error: result.reason.message }
+      return result.value
+    })
+  })
+
+
 }
 
 export async function raceBooking(trainNumbers, passenger, date, classType) {
   // Your code here
+  if (!Array.isArray(trainNumbers)) throw new Error("Koi bhi train mein seat nahi mili!")
+
+  const trains = trainNumbers.map((trainNumber) => bookTicket(passenger, trainNumber, date, classType))
+
+  return Promise.race(trains)
 }

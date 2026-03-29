@@ -166,18 +166,28 @@ export class Startup {
 
   constructor(name, founder, domain) {
     // Your code here
+    this.name = name
+    this.founder = founder
+    this.domain = domain
+    this.#funding = 0
+    this.founded = new Date().toISOString()
+    if (!["fintech", "edtech", "healthtech", "foodtech"].includes(domain)) throw new Error("Invalid domain! Choose from: fintech, edtech, healthtech, foodtech")
   }
 
   get funding() {
     // Your code here
+    return this.#funding
   }
 
   raiseFunding(amount) {
     // Your code here
+    if (amount <= 0) return -1
+    return this.#funding += amount
   }
 
   getPitch() {
     // Your code here
+    return `${this.name} by ${this.founder} | Domain: ${this.domain} | Funding: Rs.${this.funding}`
   }
 }
 
@@ -187,45 +197,108 @@ export class Incubator {
 
   constructor(name, maxStartups) {
     // Your code here
+    this.name = name
+    this.maxStartups = maxStartups
+    this.#startups = []
+    this.#mentors = []
   }
 
   async admitStartup(startup) {
     // Your code here
+    return new Promise((resolve, reject) => {
+      if (!(startup instanceof Startup)) return reject(new Error("Invalid startup!"))
+      if (this.#startups.some((s) => s.startup.name === startup.name)) return reject(new Error("Startup already admitted!"))
+      if (this.#startups.length >= this.maxStartups) return reject(new Error("Incubator full!"))
+      this.#startups.push({ startup, admittedAt: new Date().toISOString(), demoCompleted: false })
+      resolve({ success: true, message: `${startup.name} admitted to ${this.name}!` })
+    })
   }
 
   removeStartup(name) {
     // Your code here
+    if (!this.#startups.some((s) => s.startup.name === name)) return false
+    this.#startups.splice(this.#startups.findIndex((s) => s.name === name), 1)
+    return true
   }
 
   async assignMentor(startupName, mentor) {
     // Your code here
+    return new Promise((resolve, reject) => {
+      if (!this.#startups.some((s) => s.startup.name === startupName)) return reject(new Error("Startup not found!"))
+      this.#mentors.push({ startupName, mentor, assignedAt: new Date().toISOString() })
+      resolve({ success: true, message: `${mentor.name} assigned to ${startupName}` })
+    })
   }
 
   async conductDemo(startupName) {
     // Your code here
+    return new Promise((resolve, reject) => {
+      if (!this.#startups.some((s) => s.startup.name === startupName)) return reject(new Error("Startup not found!"))
+      this.#startups = this.#startups.map((s) => {
+        if (s.startup.name === startupName) {
+          s.demoCompleted = true
+          return s
+        }
+        return s
+      })
+      resolve({
+        startup: startupName,
+        score: Math.floor(Math.random() * 41) + 60,
+        feedback: ["Bahut badhiya!", "Accha hai, improve karo", "Investors impressed!"][Math.floor(Math.random() * 3)],
+        timestamp: new Date().toISOString()
+      })
+    })
   }
 
   async batchProcess(startups) {
     // Your code here
+    return Promise.allSettled(startups.map((startup) => this.admitStartup(startup))).then((results) => {
+      return results.map((result) => {
+        if (result.status === "rejected") return { status: "rejected", reason: result.reason.message }
+        return { status: "fulfilled", value: result.value }
+      })
+    })
   }
 
   getStartupsByDomain(domain) {
     // Your code here
+    return this.#startups.filter((s) => s.startup.domain === domain).map((s) => s.startup)
+    return []
   }
 
   getTopFunded(n) {
     // Your code here
+    if (n <= 0) return []
+    return this.#startups.sort((a, b) => b.startup.funding - a.startup.funding).map((s) => s.startup).slice(0, n)
   }
 
-  [Symbol.iterator]() {
+  *[Symbol.iterator]() {
     // Your code here
+    for (const s of this.#startups) {
+      yield s.startup
+    }
   }
 
   static createFromConfig(config) {
     // Your code here
+    if (!config || typeof config !== "object") throw new Error("Invalid config!")
+    if (!config.name || typeof config.name !== "string") throw new Error("Invalid config!")
+    if (!config.maxStartups || typeof config.maxStartups !== "number" || config.maxStartups <= 0) throw new Error("Invalid config!")
+    return new Incubator(config.name, config.maxStartups)
   }
 }
 
 export async function runDemoDay(incubator) {
   // Your code here
+  if (!(incubator instanceof Incubator)) throw new Error("Invalid incubator!")
+
+  const startups = [...incubator]
+  const results = await Promise.allSettled(startups.map((startup) => incubator.conductDemo(startup.name)))
+
+  return {
+    incubator: incubator.name,
+    totalStartups: startups.length,
+    results,
+    timestamp: new Date().toISOString()
+  }
 }

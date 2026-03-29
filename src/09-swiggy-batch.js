@@ -89,24 +89,74 @@
  */
 export function prepareOrder(item, prepTime) {
   // Your code here
+  return new Promise((resolve, reject) => {
+    if (!item || typeof item !== "string") {
+      reject(new Error("Item name required!"));
+    } else if (prepTime <= 0 || typeof prepTime !== "number") {
+      reject(new Error("Invalid prep time!"));
+    } else {
+      setTimeout(() => {
+        resolve({ item, ready: true, prepTime });
+      }, prepTime);
+    }
+  });
 }
 
 export function prepareBatch(items) {
   // Your code here
+  return Promise.all(items.map((item) => prepareOrder(item.name, item.prepTime)));
 }
 
 export function getFirstReady(items) {
   // Your code here
+  const firstItem = Promise.race(items.map((item) => prepareOrder(item.name, item.prepTime)));
+
+  return new Promise((resolve, reject) => {
+    if (items.length === 0) {
+      reject(new Error("No items to prepare!"));
+    }
+    firstItem.then((result) => {
+      resolve(result);
+    }).catch((error) => {
+      reject(error);
+    });
+  });
 }
 
 export function prepareSafeBatch(items) {
   // Your code here
+  return Promise.allSettled(items.map((item) => prepareOrder(item.name, item.prepTime))).then((results) => {
+    return results.map((result) => {
+      if (result.status === "rejected") return { status: "rejected", reason: result.reason.message }
+      return { status: "fulfilled", value: result.value }
+    })
+  })
 }
 
 export function deliverWithTimeout(orderPromise, timeoutMs) {
   // Your code here
+  if (timeoutMs <= 0) return Promise.reject(new Error("Invalid timeout!"))
+
+  const timeout = new Promise((resolve, reject) => {
+    setTimeout(() => {
+      reject(new Error("Delivery timeout!"))
+    }, timeoutMs);
+  })
+
+  return Promise.race([orderPromise, timeout])
+
 }
 
-export function batchWithRetry(items, maxRetries) {
+export async function batchWithRetry(items, maxRetries) {
   // Your code here
+  if (maxRetries < 0) throw new Error("Invalid max retries!")
+
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await prepareBatch(items)
+    } catch (error) {
+      throw new Error(error)
+    }
+  }
+
 }
